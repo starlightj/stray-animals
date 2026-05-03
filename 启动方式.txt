@@ -1,0 +1,8 @@
+打开服务器
+cd D:\软件项目管理\campus-animal-fe(1)\campus-animal-fe\backend
+node server.js
+
+查看数据库脚本
+cd D:\软件项目管理\campus-animal-fe(1)\campus-animal-fe\backend
+node view-db.js
+

@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园流浪动物管理系统</title>
+  
+  <!-- 引入必要的库 - 使用更稳定的CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Ant Design 5.x -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.12.5/dist/reset.css">
+  <script src="https://cdn.jsdelivr.net/npm/antd@5.12.5/dist/antd.min.js"></script>
+  
+  <!-- React Router -->
+  <script src="https://unpkg.com/react-router-dom@6.20.0/dist/umd/react-router-dom.production.min.js"></script>
+  
+  <!-- Recharts -->
+  <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+  
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f0f2f5;
+    }
+    
+    #root {
+      width: 100%;
+      min-height: 100vh;
+    }
+    
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      font-size: 18px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    // 模拟数据
+    const mockAnimals = [
+      {
+        id: '1',
+        name: '大黄',
+        species: '狗',
+        color: '黄色',
+        features: '体型较大，性格温顺',
+        imageUrl: 'https://picsum.photos/200/200?random=1',
+        location: {
+          latitude: 39.9042,
+          longitude: 116.4074,
+          address: '图书馆前'
+        },
+        createdAt: '2026-04-20T10:00:00Z',
+        updatedAt: '2026-04-20T10:00:00Z'
+      },
+      {
+        id: '2',
+        name: '小黑',
+        species: '猫',
+        color: '黑色',
+        features: '经常在教学楼附近活动',
+        imageUrl: 'https://picsum.photos/200/200?random=2',
+        location: {
+          latitude: 39.9043,
+          longitude: 116.4075,
+          address: '教学楼旁'
+        },
+        createdAt: '2026-04-19T14:30:00Z',
+        updatedAt: '2026-04-19T14:30:00Z'
+      },
+      {
+        id: '3',
+        name: '小花',
+        species: '猫',
+        color: '花斑',
+        features: '尾巴有白色斑块',
+        imageUrl: 'https://picsum.photos/200/200?random=3',
+        location: {
+          latitude: 39.9044,
+          longitude: 116.4076,
+          address: '食堂附近'
+        },
+        createdAt: '2026-04-18T09:15:00Z',
+        updatedAt: '2026-04-18T09:15:00Z'
+      }
+    ];
+
+    // 全局状态管理
+    const { useState, useRef, useEffect } = React;
+    
+    // 从命名空间中获取组件
+    const { 
+      BrowserRouter, 
+      Routes, 
+      Route, 
+      useParams, 
+      useNavigate, 
+      useLocation,
+      Outlet
+    } = ReactRouterDOM;
+
+    const { 
+      Card, 
+      Row, 
+      Col, 
+      Statistic, 
+      Spin, 
+      message, 
+      Upload, 
+      Button, 
+      Form, 
+      Input, 
+      Select, 
+      Modal, 
+      Table,
+      Tabs,
+      ConfigProvider,
+      Layout,
+      Menu
+    } = antd;
+
+    const { 
+      PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+    } = Recharts;
+
+    const { Header, Sider, Content } = Layout;
+
+    // API 模拟
+    const api = {
+      getAnimals: async (params) => {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        let filteredAnimals = [...mockAnimals];
+        if (params.species) {
+          filteredAnimals = filteredAnimals.filter(animal => animal.species === params.species);
+        }
+        if (params.keyword) {
+          const keyword = params.keyword.toLowerCase();
+          filteredAnimals = filteredAnimals.filter(animal => 
+            (animal.name?.toLowerCase().includes(keyword) || false) ||
+            (animal.features?.toLowerCase().includes(keyword) || false)
+          );
+        }
+        const startIndex = (params.page - 1) * params.pageSize;
+        const endIndex = startIndex + params.pageSize;
+        const paginatedAnimals = filteredAnimals.slice(startIndex, endIndex);
+        return { data: paginatedAnimals, total: filteredAnimals.length };
+      },
+      getAnimalById: async (id) => {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const animal = mockAnimals.find(a => a.id === id);
+        if (!animal) throw new Error('Animal not found');
+        return animal;
+      }
+    };
+
+    // 主布局组件
+    const MainLayout = () => {
+      const navigate = useNavigate();
+      const location = useLocation();
+
+      const menuItems = [
+        { key: '/', label: '数据看板' },
+        { key: '/recognize', label: '识别上报' },
+        { key: '/archive', label: '动物档案' },
+        { key: '/map', label: '地图追踪' },
+        { key: '/admin', label: '管理后台' },
+      ];
+
+      return (
+        <Layout style={{ minHeight: '100vh' }}>
+          <Sider theme="dark">
+            <div style={{ 
+              color: 'white', textAlign: 'center', 
+              padding: '16px', fontSize: '16px', fontWeight: 'bold' 
+            }}>
+              🐾 校园动物管理
+            </div>
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={({ key }) => navigate(key)}
+            />
+          </Sider>
+          <Layout>
+            <Header style={{ 
+              background: '#fff', paddingLeft: '24px', 
+              fontSize: '18px', fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              基于图像识别的流浪动物管理系统
+            </Header>
+            <Content style={{ margin: '16px' }}>
+              <Outlet />
+            </Content>
+          </Layout>
+        </Layout>
+      );
+    };
+
+    // 数据看板页面
+    const Dashboard = () => {
+      const [animals, setAnimals] = useState([]);
+      const [loading, setLoading] = useState(false);
+
+      const loadAnimals = async () => {
+        try {
+          setLoading(true);
+          const response = await api.getAnimals({ page: 1, pageSize: 100 });
+          setAnimals(response.data);
+        } catch (error) {
+          message.error('加载动物数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadAnimals();
+      }, []);
+
+      if (loading) {
+        return (
+          <div className="loading-container">
+            <Spin size="large" />
+          </div>
+        );
+      }
+
+      const totalAnimals = animals.length;
+      const speciesCount = animals.reduce((acc, animal) => {
+        acc[animal.species] = (acc[animal.species] || 0) + 1;
+        return acc;
+      }, {});
+
+      const pieData = Object.entries(speciesCount).map(([name, value]) => ({ name, value }));
+      const barData = Object.entries(speciesCount).map(([name, value]) => ({ name, 数量: value }));
+      const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>数据看板</h1>
+          <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+            <Col xs={24} sm={12} md={8}>
+              <Card>
+                <Statistic title="总动物数量" value={totalAnimals} />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Card>
+                <Statistic title="物种数量" value={Object.keys(speciesCount).length} />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Card>
+                <Statistic title="今日新增" value={0} />
+              </Card>
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <Card title="物种分布">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Card>
+            </Col>
+            <Col xs={24} md={12}>
+              <Card title="物种数量统计">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="数量" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </Col>
+          </Row>
+        </div>
+      );
+    };
+
+    // 识别上报页面
+    const Recognize = () => {
+      const [loading, setLoading] = useState(false);
+      const [form] = Form.useForm();
+      const [fileList, setFileList] = useState([]);
+      const [recognizeResult, setRecognizeResult] = useState(null);
+
+      const handleUpload = async (file) => {
+        setLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const result = {
+          species: '猫',
+          color: '橘色',
+          confidence: 0.95,
+          features: '体型中等，耳朵竖立'
+        };
+        
+        setRecognizeResult(result);
+        form.setFieldsValue({
+          species: result.species,
+          color: result.color,
+          features: result.features
+        });
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setFileList([{ url: e.target.result, status: 'done' }]);
+        };
+        reader.readAsDataURL(file);
+        
+        message.success('识别成功');
+        setLoading(false);
+        return false;
+      };
+
+      const handleSave = async (values) => {
+        setLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        message.success('保存成功');
+        form.resetFields();
+        setFileList([]);
+        setRecognizeResult(null);
+        setLoading(false);
+      };
+
+      const uploadProps = {
+        fileList,
+        beforeUpload: handleUpload,
+        onChange: (info) => setFileList(info.fileList),
+        maxCount: 1
+      };
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>识别上报</h1>
+          <Card>
+            <Form form={form} layout="vertical" onFinish={handleSave}>
+              <Form.Item label="上传图片">
+                <Upload {...uploadProps}>
+                  <Button type="primary">点击上传图片</Button>
+                </Upload>
+              </Form.Item>
+
+              {recognizeResult && (
+                <Card title="识别结果" style={{ marginBottom: '24px' }}>
+                  <p>物种: {recognizeResult.species}</p>
+                  <p>颜色: {recognizeResult.color}</p>
+                  <p>置信度: {Math.round(recognizeResult.confidence * 100)}%</p>
+                  <p>特征: {recognizeResult.features}</p>
+                </Card>
+              )}
+
+              <Form.Item name="name" label="动物名称">
+                <Input placeholder="请输入动物名称（选填）" />
+              </Form.Item>
+
+              <Form.Item name="species" label="物种" rules={[{ required: true }]}>
+                <Select placeholder="请选择物种">
+                  <Select.Option value="猫">猫</Select.Option>
+                  <Select.Option value="狗">狗</Select.Option>
+                  <Select.Option value="其他">其他</Select.Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item name="color" label="毛色" rules={[{ required: true }]}>
+                <Input placeholder="请输入毛色" />
+              </Form.Item>
+
+              <Form.Item name="features" label="特征描述">
+                <Input.TextArea rows={4} placeholder="请输入特征描述（选填）" />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  保存
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        </div>
+      );
+    };
+
+    // 动物档案页面
+    const Archive = () => {
+      const [animals, setAnimals] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [searchText, setSearchText] = useState('');
+      const [species, setSpecies] = useState('');
+      const navigate = useNavigate();
+
+      const loadAnimals = async () => {
+        try {
+          setLoading(true);
+          const response = await api.getAnimals({
+            page: 1, pageSize: 100, keyword: searchText, species: species || undefined
+          });
+          setAnimals(response.data);
+        } catch (error) {
+          message.error('加载动物档案失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadAnimals();
+      }, [searchText, species]);
+
+      const columns = [
+        {
+          title: '动物图片',
+          dataIndex: 'imageUrl',
+          key: 'imageUrl',
+          render: (imageUrl) => (
+            <img src={imageUrl} alt="动物" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }} />
+          )
+        },
+        { title: '名称', dataIndex: 'name', key: 'name', render: (name) => name || '未命名' },
+        { title: '物种', dataIndex: 'species', key: 'species' },
+        { title: '毛色', dataIndex: 'color', key: 'color' },
+        { title: '特征', dataIndex: 'features', key: 'features', render: (features) => features || '无' },
+        { title: '发现时间', dataIndex: 'createdAt', key: 'createdAt', render: (d) => new Date(d).toLocaleString() },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Button type="link" onClick={() => navigate(`/archive/${record.id}`)}>
+              查看详情
+            </Button>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>动物档案</h1>
+          <Card style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+              <Input
+                placeholder="搜索名称或特征"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: 300 }}
+              />
+              <Select
+                placeholder="筛选物种"
+                value={species}
+                onChange={setSpecies}
+                style={{ width: 150 }}
+              >
+                <Select.Option value="">全部</Select.Option>
+                <Select.Option value="猫">猫</Select.Option>
+                <Select.Option value="狗">狗</Select.Option>
+                <Select.Option value="其他">其他</Select.Option>
+              </Select>
+              <Button type="primary" onClick={loadAnimals}>搜索</Button>
+            </div>
+            
+            {loading ? (
+              <div className="loading-container">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={animals}
+                rowKey="id"
+              />
+            )}
+          </Card>
+        </div>
+      );
+    };
+
+    // 动物详情页面
+    const AnimalDetail = () => {
+      const { id } = useParams();
+      const navigate = useNavigate();
+      const [animal, setAnimal] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        if (id) {
+          const load = async () => {
+            try {
+              const data = await api.getAnimalById(id);
+              setAnimal(data);
+            } catch (error) {
+              message.error('加载动物详情失败');
+            } finally {
+              setLoading(false);
+            }
+          };
+          load();
+        }
+      }, [id]);
+
+      if (loading) {
+        return (
+          <div className="loading-container">
+            <Spin size="large" />
+          </div>
+        );
+      }
+
+      if (!animal) {
+        return (
+          <Card>
+            <p>动物信息不存在</p>
+            <Button type="primary" onClick={() => navigate('/archive')}>返回</Button>
+          </Card>
+        );
+      }
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>动物详情</h1>
+          <Card>
+            <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', flexWrap: 'wrap' }}>
+              <img
+                src={animal.imageUrl}
+                alt={animal.name}
+                style={{ width: '300px', height: '300px', objectFit: 'cover', borderRadius: 8 }}
+              />
+              <div style={{ flex: 1, minWidth: 300 }}>
+                <h3 style={{ marginBottom: '16px' }}>{animal.name || '未命名'}</h3>
+                <p><strong>物种:</strong> {animal.species}</p>
+                <p><strong>毛色:</strong> {animal.color}</p>
+                <p><strong>特征:</strong> {animal.features || '无'}</p>
+                <p><strong>位置:</strong> {animal.location.address}</p>
+                <p><strong>发现时间:</strong> {new Date(animal.createdAt).toLocaleString()}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
+              <Button onClick={() => navigate('/archive')}>返回列表</Button>
+              <Button type="primary">编辑信息</Button>
+            </div>
+          </Card>
+        </div>
+      );
+    };
+
+    // 地图追踪页面
+    const MapView = () => {
+      const [animals, setAnimals] = useState([]);
+      const [species, setSpecies] = useState('');
+      const [loading, setLoading] = useState(false);
+      const mapRef = useRef(null);
+      const mapInstance = useRef(null);
+
+      const loadAnimals = async () => {
+        try {
+          setLoading(true);
+          const response = await api.getAnimals({
+            page: 1, pageSize: 100, species: species || undefined
+          });
+          setAnimals(response.data);
+        } catch (error) {
+          message.error('加载动物数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadAnimals();
+      }, [species]);
+
+      useEffect(() => {
+        if (mapRef.current && !mapInstance.current) {
+          // 修复Leaflet图标问题
+          delete (L.Icon.Default.prototype)._getIconUrl;
+          L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+          });
+
+          mapInstance.current = L.map(mapRef.current).setView([39.9042, 116.4074], 16);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(mapInstance.current);
+        }
+
+        if (mapInstance.current) {
+          mapInstance.current.eachLayer((layer) => {
+            if (layer instanceof L.Marker) {
+              mapInstance.current.removeLayer(layer);
+            }
+          });
+
+          animals.forEach((animal) => {
+            const marker = L.marker([animal.location.latitude, animal.location.longitude])
+              .addTo(mapInstance.current)
+              .bindPopup(`
+                <div style="min-width: 200px">
+                  <h3>${animal.name || '未命名'}</h3>
+                  <p>物种: ${animal.species}</p>
+                  <img src="${animal.imageUrl}" style="width: 100%; height: 120px; object-fit: cover" />
+                </div>
+              `);
+          });
+        }
+      }, [animals]);
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>地图追踪</h1>
+          <Card>
+            <div style={{ marginBottom: '16px' }}>
+              <Select
+                placeholder="筛选物种"
+                value={species}
+                onChange={setSpecies}
+                style={{ width: 200 }}
+              >
+                <Select.Option value="">全部</Select.Option>
+                <Select.Option value="猫">猫</Select.Option>
+                <Select.Option value="狗">狗</Select.Option>
+                <Select.Option value="其他">其他</Select.Option>
+              </Select>
+            </div>
+            {loading ? (
+              <div className="loading-container">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <div ref={mapRef} style={{ height: 600, borderRadius: 8 }} />
+            )}
+          </Card>
+        </div>
+      );
+    };
+
+    // 管理后台页面
+    const Admin = () => {
+      const [animals, setAnimals] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [form] = Form.useForm();
+      const [activeTab, setActiveTab] = useState('animals');
+
+      const loadAnimals = async () => {
+        try {
+          setLoading(true);
+          const response = await api.getAnimals({ page: 1, pageSize: 10 });
+          setAnimals(response.data);
+        } catch (error) {
+          message.error('加载动物数据失败');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        loadAnimals();
+      }, []);
+
+      const handleSave = async (values) => {
+        setLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 800));
+        message.success('保存成功');
+        form.resetFields();
+        setActiveTab('animals');
+        loadAnimals();
+        setLoading(false);
+      };
+
+      const columns = [
+        { title: 'ID', dataIndex: 'id', key: 'id' },
+        { title: '名称', dataIndex: 'name', key: 'name', render: (name) => name || '未命名' },
+        { title: '物种', dataIndex: 'species', key: 'species' },
+        { title: '毛色', dataIndex: 'color', key: 'color' },
+        { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', render: (d) => new Date(d).toLocaleString() },
+        {
+          title: '操作',
+          key: 'action',
+          render: (_, record) => (
+            <Button type="link" onClick={() => {
+              form.setFieldsValue(record);
+              setActiveTab('edit');
+            }}>
+              编辑
+            </Button>
+          )
+        }
+      ];
+
+      const tabItems = [
+        {
+          key: 'animals',
+          label: '动物管理',
+          children: (
+            <>
+              <div style={{ marginBottom: '24px' }}>
+                <Button type="primary" onClick={() => {
+                  form.resetFields();
+                  setActiveTab('add');
+                }}>
+                  添加动物
+                </Button>
+              </div>
+              <Table
+                columns={columns}
+                dataSource={animals}
+                rowKey="id"
+              />
+            </>
+          )
+        },
+        {
+          key: 'add',
+          label: '添加动物',
+          children: (
+            <Form form={form} layout="vertical" onFinish={handleSave}>
+              <Form.Item name="name" label="动物名称">
+                <Input placeholder="请输入动物名称（选填）" />
+              </Form.Item>
+              <Form.Item name="species" label="物种" rules={[{ required: true }]}>
+                <Input placeholder="请输入物种" />
+              </Form.Item>
+              <Form.Item name="color" label="毛色" rules={[{ required: true }]}>
+                <Input placeholder="请输入毛色" />
+              </Form.Item>
+              <Form.Item name="features" label="特征描述">
+                <Input.TextArea rows={4} placeholder="请输入特征描述（选填）" />
+              </Form.Item>
+              <Form.Item name="imageUrl" label="图片URL" rules={[{ required: true }]}>
+                <Input placeholder="请输入图片URL" />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>保存</Button>
+                <Button style={{ marginLeft: 8 }} onClick={() => setActiveTab('animals')}>取消</Button>
+              </Form.Item>
+            </Form>
+          )
+        },
+        {
+          key: 'edit',
+          label: '编辑动物',
+          children: (
+            <Form form={form} layout="vertical" onFinish={handleSave}>
+              <Form.Item name="id" label="ID" hidden><Input /></Form.Item>
+              <Form.Item name="name" label="动物名称">
+                <Input placeholder="请输入动物名称（选填）" />
+              </Form.Item>
+              <Form.Item name="species" label="物种" rules={[{ required: true }]}>
+                <Input placeholder="请输入物种" />
+              </Form.Item>
+              <Form.Item name="color" label="毛色" rules={[{ required: true }]}>
+                <Input placeholder="请输入毛色" />
+              </Form.Item>
+              <Form.Item name="features" label="特征描述">
+                <Input.TextArea rows={4} placeholder="请输入特征描述（选填）" />
+              </Form.Item>
+              <Form.Item name="imageUrl" label="图片URL" rules={[{ required: true }]}>
+                <Input placeholder="请输入图片URL" />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>保存</Button>
+                <Button style={{ marginLeft: 8 }} onClick={() => setActiveTab('animals')}>取消</Button>
+              </Form.Item>
+            </Form>
+          )
+        }
+      ];
+
+      return (
+        <div>
+          <h1 style={{ marginBottom: '24px' }}>管理后台</h1>
+          <Card>
+            <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+          </Card>
+        </div>
+      );
+    };
+
+    // 主应用
+    const App = () => {
+      return (
+        <ConfigProvider locale={antd.locales.zhCN}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="recognize" element={<Recognize />} />
+                <Route path="archive" element={<Archive />} />
+                <Route path="archive/:id" element={<AnimalDetail />} />
+                <Route path="map" element={<MapView />} />
+                <Route path="admin" element={<Admin />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </ConfigProvider>
+      );
+    };
+
+    // 渲染应用
+    try {
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+    } catch (error) {
+      console.error('渲染应用时出错:', error);
+      document.getElementById('root').innerHTML = `
+        <div style="padding: 20px; color: red">
+          <h2>应用启动失败</h2>
+          <p>错误信息: ${error.message}</p>
+          <p>请检查浏览器控制台获取更多详情。</p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
