@@ -3,7 +3,28 @@ import type { AnimalRecord, RecognizeResult } from '@/types/animal';
 import { mockAnimals, mockRecognizeResult } from './mockData';
 
 // 使用模拟数据标志
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
+
+// 上传图片
+export const uploadImage = async (file: File) => {
+  if (USE_MOCK_DATA) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const reader = new FileReader();
+    return new Promise<{ imageUrl: string }>((resolve) => {
+      reader.onloadend = () => {
+        resolve({ imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  
+  const formData = new FormData();
+  formData.append('image', file);
+  const { data } = await apiClient.post<{ imageUrl: string }>('/api/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};
 
 // 上传图片并识别
 export const recognizeAnimal = async (file: File, latitude: number, longitude: number) => {

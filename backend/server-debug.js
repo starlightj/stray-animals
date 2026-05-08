@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+require('dotenv').config();
 
 const logFile = fs.createWriteStream('server.log', { flags: 'a' });
 
@@ -21,26 +24,87 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = 3000;
 
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+if (!fs.existsSync('./uploads')) {
+  fs.mkdirSync('./uploads', { recursive: true });
+}
+
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 let pool;
 
 async function initDB() {
   try {
+    const sslConfig = process.env.MYSQL_SSL === 'true' ? {
+      ca: fs.readFileSync('./isrgrootx1.pem'),
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    } : undefined;
+    
     pool = mysql.createPool({
-      host: 'localhost',
-      user: 'root',
-      password: 'YxY13830268572!',
-      database: 'campus_animal',
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: process.env.MYSQL_PORT || 3306,
+      user: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || '',
+      ssl: sslConfig,
       waitForConnections: true,
-      connectionLimit: 10
+      connectionLimit: 10,
+      enableKeepAlive: true
     });
     log('数据库连接池创建成功');
 
     const connection = await pool.getConnection();
     log('数据库连接测试成功');
+    
+    await connection.execute(`CREATE DATABASE IF NOT EXISTS campus_animal`);
+    log('数据库创建成功');
+    
+    await connection.execute(`USE campus_animal`);
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS animals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        species VARCHAR(50) NOT NULL,
+        color VARCHAR(50),
+        features TEXT,
+        imageUrl VARCHAR(255),
+        location_lat DECIMAL(10,7),
+        location_lng DECIMAL(10,7),
+        location_address VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    log('表创建成功');
+    
     connection.release();
+    
+    pool.end();
+    
+    pool = mysql.createPool({
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: process.env.MYSQL_PORT || 3306,
+      user: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || '',
+      database: 'campus_animal',
+      ssl: sslConfig,
+      waitForConnections: true,
+      connectionLimit: 10,
+      enableKeepAlive: true
+    });
+    log('连接池重新配置成功');
   } catch (error) {
     log('数据库初始化错误: ' + error.stack);
     throw error;
@@ -121,10 +185,14 @@ app.get('/api/animals/:id', async (req, res) => {
 app.post('/api/animals', async (req, res) => {
   try {
     const { name, species, color, features, imageUrl, location } = req.body;
+    
     const [result] = await pool.query(
       `INSERT INTO animals (name, species, color, features, imageUrl, location_lat, location_lng, location_address)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name || '未命名', species, color, features || '', imageUrl, location.latitude, location.longitude, location.address]
+      [name || '未命名', species, color, features || '', imageUrl, 
+       location ? location.latitude : null, 
+       location ? location.longitude : null, 
+       location ? location.address : null]
     );
     const [rows] = await pool.query('SELECT * FROM animals WHERE id = ?', [result.insertId]);
     const row = rows[0];
@@ -271,14 +339,47 @@ app.get('/api/animals/filter/species', async (req, res) => {
   }
 });
 
-app.post('/api/recognition/image', (req, res) => {
-  const mockResults = [
-    { species: '猫', color: '橘色', confidence: 0.95, features: '体型中等，耳朵竖立' },
-    { species: '狗', color: '黄色', confidence: 0.88, features: '体型较大，四肢粗壮' },
-    { species: '猫', color: '白色', confidence: 0.92, features: '蓝眼睛，长毛' }
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: '请上传图片' });
+    }
+    
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    res.json({ imageUrl });
+  } catch (error) {
+    log('Upload error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/recognition/image', upload.single('image'), (req, res) => {
+  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+  
+  const speciesList = ['猫', '狗', '其他'];
+  const species = speciesList[Math.floor(Math.random() * speciesList.length)];
+  
+  const colorList = ['黑色', '白色', '黄色', '棕色', '花斑', '灰色'];
+  const color = colorList[Math.floor(Math.random() * colorList.length)];
+  
+  const featuresList = [
+    '体型较大，性格温顺',
+    '经常在教学楼附近活动',
+    '尾巴有白色斑块，性格粘人',
+    '短毛，耳朵下垂',
+    '毛发蓬松，喜欢晒太阳'
   ];
-  const result = mockResults[Math.floor(Math.random() * mockResults.length)];
-  res.json({ success: true, data: result });
+  const features = featuresList[Math.floor(Math.random() * featuresList.length)];
+  
+  res.json({
+    species: species,
+    color: color,
+    confidence: (Math.random() * 0.3 + 0.7).toFixed(2),
+    features: features,
+    imageUrl: imageUrl
+  });
 });
 
 app.get('/', (req, res) => {

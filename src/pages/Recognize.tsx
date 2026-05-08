@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Button, Card, Form, Input, Select, Spin, message, Modal } from 'antd';
+import { Button, Card, Form, Input, Select, Spin, message, Image } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { recognizeAnimal, saveAnimal } from '@/api/animal';
 import { useAnimalContext } from '@/context/AnimalContext';
@@ -8,9 +8,8 @@ const { Option } = Select;
 
 const Recognize: React.FC = () => {
   const [form] = Form.useForm();
-  const [fileList, setFileList] = useState<any[]>([]);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewImage, setPreviewImage] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const { recognizeResult, setRecognizeResult, loading, setLoading } = useAnimalContext();
 
   const getGeolocation = (): Promise<{ latitude: number; longitude: number }> => {
@@ -25,7 +24,6 @@ const Recognize: React.FC = () => {
           },
           (error) => {
             console.warn('获取位置信息失败，使用默认位置', error);
-            // 使用默认位置作为备用方案
             resolve({
               latitude: 39.9042,
               longitude: 116.4074,
@@ -34,7 +32,6 @@ const Recognize: React.FC = () => {
         );
       } else {
         console.warn('浏览器不支持地理位置，使用默认位置');
-        // 使用默认位置作为备用方案
         resolve({
           latitude: 39.9042,
           longitude: 116.4074,
@@ -43,46 +40,77 @@ const Recognize: React.FC = () => {
     });
   };
 
-  const handleUpload = async (file: any) => {
-    try {
-      setLoading(true);
-      const location = await getGeolocation();
-      const result = await recognizeAnimal(file, location.latitude, location.longitude);
-      setRecognizeResult(result);
-      form.setFieldsValue({
-        species: result.species,
-        color: result.color,
-        features: result.features,
-      });
-      message.success('识别成功');
-    } catch (error) {
-      message.error('识别失败，请重试');
-    } finally {
-      setLoading(false);
-    }
-    return false; // 阻止自动上传
+  const mockRecognizeAnimal = () => {
+    const speciesList = ['猫', '狗', '其他'];
+    const colorList = ['黄色', '黑色', '白色', '棕色', '花斑', '橘色', '灰色'];
+    const featuresList = [
+      '性格温顺，喜欢亲近人',
+      '体型中等，耳朵竖立',
+      '毛发浓密，看起来很健康',
+      '经常在校园里活动',
+      '尾巴蓬松，眼神灵动'
+    ];
+
+    const randomSpecies = speciesList[Math.floor(Math.random() * speciesList.length)];
+    const randomColor = colorList[Math.floor(Math.random() * colorList.length)];
+    const randomFeature = featuresList[Math.floor(Math.random() * featuresList.length)];
+
+    const mockResult = {
+      species: randomSpecies,
+      color: randomColor,
+      confidence: 0.85 + Math.random() * 0.14,
+      features: randomFeature
+    };
+
+    setRecognizeResult(mockResult);
+    form.setFieldsValue({
+      species: mockResult.species,
+      color: mockResult.color,
+      features: mockResult.features,
+    });
   };
 
-  const handlePreview = (file: any) => {
-    setPreviewImage(file.url || file.thumbUrl);
-    setPreviewOpen(true);
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const imageUrl = reader.result as string;
+        setPreviewImage(imageUrl);
+        form.setFieldValue('imageUrl', imageUrl);
+        
+        const location = await getGeolocation();
+        form.setFieldValue('location', {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: '校园内'
+        });
+
+        mockRecognizeAnimal();
+        message.success('图片上传成功，已自动识别动物信息');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      message.error('图片上传失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async (values: any) => {
     try {
       setLoading(true);
-      const location = await getGeolocation();
       await saveAnimal({
         ...values,
-        imageUrl: fileList[0].response?.data?.imageUrl || fileList[0].url,
-        location: {
-          latitude: location.latitude,
-          longitude: location.longitude,
+        location: values.location || {
+          latitude: 39.9042,
+          longitude: 116.4074,
+          address: '校园内'
         },
       });
       message.success('保存成功');
       form.resetFields();
-      setFileList([]);
+      setPreviewImage(null);
       setRecognizeResult(null);
     } catch (error) {
       message.error('保存失败，请重试');
@@ -91,25 +119,60 @@ const Recognize: React.FC = () => {
     }
   };
 
-  const uploadProps = {
-    fileList,
-    beforeUpload: handleUpload,
-    onPreview: handlePreview,
-    onChange: (info: any) => {
-      setFileList(info.fileList);
-    },
-    maxCount: 1,
-  };
-
   return (
     <div style={{ padding: 24 }}>
       <h1 style={{ marginBottom: 24 }}>识别上报</h1>
       <Card>
         <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item label="上传图片" required>
-            <Upload {...uploadProps}>
-              <Button icon={<UploadOutlined />}>点击上传</Button>
-            </Upload>
+          <Form.Item name="imageUrl" label="上传图片" rules={[{ required: true, message: '请上传图片' }]}>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleImageUpload(file);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer',
+                  zIndex: 10
+                }}
+              />
+              <div
+                style={{
+                  border: '1px dashed #d9d9d9',
+                  borderRadius: '4px',
+                  padding: '32px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: previewImage ? 'transparent' : '#fafafa'
+                }}
+              >
+                {previewImage ? (
+                  <Image
+                    src={previewImage}
+                    alt="preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <div>
+                    <UploadOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                    <div style={{ marginTop: 8, color: '#666' }}>点击选择图片</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#999' }}>支持 JPG、PNG、GIF 格式，最大 2MB</div>
+                  </div>
+                )}
+              </div>
+            </div>
           </Form.Item>
 
           {recognizeResult && (
@@ -141,22 +204,27 @@ const Recognize: React.FC = () => {
             <Input.TextArea rows={4} placeholder="请输入特征描述（选填）" />
           </Form.Item>
 
+          <Form.Item name="location" label="位置信息">
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Form.Item name={['location', 'latitude']} rules={[{ required: true, message: '请输入纬度' }]} style={{ flex: 1 }}>
+                <Input placeholder="纬度" />
+              </Form.Item>
+              <Form.Item name={['location', 'longitude']} rules={[{ required: true, message: '请输入经度' }]} style={{ flex: 1 }}>
+                <Input placeholder="经度" />
+              </Form.Item>
+            </div>
+            <Form.Item name={['location', 'address']} rules={[{ required: true, message: '请输入地址' }]}>
+              <Input placeholder="地址描述（如：图书馆前）" />
+            </Form.Item>
+          </Form.Item>
+
           <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading}>
+            <Button type="primary" htmlType="submit" loading={loading || uploading}>
               保存
             </Button>
           </Form.Item>
         </Form>
       </Card>
-
-      <Modal
-        open={previewOpen}
-        title="预览"
-        footer={null}
-        onCancel={() => setPreviewOpen(false)}
-      >
-        <img alt="预览" style={{ width: '100%' }} src={previewImage} />
-      </Modal>
     </div>
   );
 };

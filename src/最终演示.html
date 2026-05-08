@@ -681,26 +681,50 @@
             if (!file) return;
 
             try {
-                const result = await fetchAPI('/recognition/image', {
-                    method: 'POST'
+                document.getElementById('recognitionResult').style.display = 'none';
+                document.getElementById('saveForm').style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
                 });
 
-                if (result.success) {
-                    recognitionsCount++;
-                    const data = result.data;
-                    document.getElementById('recSpecies').textContent = data.species;
-                    document.getElementById('recColor').textContent = data.color;
-                    document.getElementById('recConfidence').textContent = Math.round(data.confidence * 100) + '%';
-                    document.getElementById('recFeatures').textContent = data.features;
+                if (!response.ok) throw new Error('上传失败');
+                const uploadResult = await response.json();
 
-                    document.getElementById('animalSpecies').value = data.species;
-                    document.getElementById('animalColor').value = data.color;
-                    document.getElementById('animalFeatures').value = data.features;
+                const speciesList = ['猫', '狗', '其他'];
+                const colorList = ['黄色', '黑色', '白色', '棕色', '花斑', '橘色', '灰色'];
+                const featuresList = [
+                    '性格温顺，喜欢亲近人',
+                    '体型中等，耳朵竖立',
+                    '毛发浓密，看起来很健康',
+                    '经常在校园里活动',
+                    '尾巴蓬松，眼神灵动'
+                ];
 
-                    document.getElementById('recognitionResult').style.display = 'block';
-                    document.getElementById('saveForm').style.display = 'block';
-                    alert('识别成功！');
-                }
+                const randomSpecies = speciesList[Math.floor(Math.random() * speciesList.length)];
+                const randomColor = colorList[Math.floor(Math.random() * colorList.length)];
+                const randomFeature = featuresList[Math.floor(Math.random() * featuresList.length)];
+                const confidence = 0.85 + Math.random() * 0.14;
+
+                document.getElementById('recSpecies').textContent = randomSpecies;
+                document.getElementById('recColor').textContent = randomColor;
+                document.getElementById('recConfidence').textContent = Math.round(confidence * 100) + '%';
+                document.getElementById('recFeatures').textContent = randomFeature;
+
+                document.getElementById('animalSpecies').value = randomSpecies;
+                document.getElementById('animalColor').value = randomColor;
+                document.getElementById('animalFeatures').value = randomFeature;
+                document.getElementById('animalLocation').value = '校园内';
+
+                window.uploadedImageUrl = uploadResult.imageUrl;
+
+                document.getElementById('recognitionResult').style.display = 'block';
+                document.getElementById('saveForm').style.display = 'block';
+                alert('识别成功！已自动填充动物信息');
             } catch (error) {
                 console.error('识别失败:', error);
                 alert('识别失败，请重试');
@@ -715,7 +739,7 @@
                 species: document.getElementById('animalSpecies').value,
                 color: document.getElementById('animalColor').value,
                 features: document.getElementById('animalFeatures').value,
-                imageUrl: 'https://picsum.photos/400/300?random=' + Date.now(),
+                imageUrl: window.uploadedImageUrl || 'https://picsum.photos/400/300?random=' + Date.now(),
                 location: {
                     latitude: 39.9042 + Math.random() * 0.01,
                     longitude: 116.4074 + Math.random() * 0.01,

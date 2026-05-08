@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const { initDatabase } = require('./config/database');
 
 dotenv.config();
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const startServer = async () => {
   try {
@@ -21,11 +23,13 @@ const startServer = async () => {
     const recognitionRoutes = require('./routes/recognitionRoutes');
     const statsRoutes = require('./routes/statsRoutes');
     const mapRoutes = require('./routes/mapRoutes');
+    const uploadRoutes = require('./routes/uploadRoutes');
 
     app.use('/api/animals', animalRoutes);
     app.use('/api/recognition', recognitionRoutes);
     app.use('/api/stats', statsRoutes);
     app.use('/api/map', mapRoutes);
+    app.use('/api/upload', uploadRoutes);
 
     app.get('/', (req, res) => {
       res.json({ message: '校园流浪动物管理系统后端API (MySQL)' });

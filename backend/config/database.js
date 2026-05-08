@@ -3,12 +3,16 @@ require('dotenv').config();
 
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || 'localhost',
+  port: process.env.MYSQL_PORT || 3306,
   user: process.env.MYSQL_USER || 'root',
   password: process.env.MYSQL_PASSWORD || '',
-  database: 'campus_animal',
+  database: process.env.MYSQL_DATABASE || 'campus_animal',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: process.env.MYSQL_SSL === 'true' ? {
+    minVersion: 'TLSv1.2'
+  } : false
 });
 
 const initDatabase = async () => {
