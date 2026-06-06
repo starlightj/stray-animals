@@ -12,17 +12,13 @@ dist
 dist-ssr
 *.local
 
-# Environment
-.env
-backend/.env
+# SQLite 数据库文件
+*.db
+*.db-shm
+*.db-wal
 
-# SQLite database
-backend/campus_animal.db
-backend/campus_animal.db-shm
-backend/campus_animal.db-wal
-
-# Uploaded images
-backend/uploads/
+# 上传的图片文件
+backend/uploads/*
 
 # Editor directories and files
 .vscode/*
