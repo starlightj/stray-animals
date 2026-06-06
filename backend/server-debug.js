@@ -1,10 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-require('dotenv').config();
+const { pool, initDatabase } = require('./config/database-sqlite');
 
 const logFile = fs.createWriteStream('server.log', { flags: 'a' });
 
@@ -24,9 +23,11 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = 3000;
 
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './uploads');
+    cb(null, UPLOADS_DIR);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -36,75 +37,21 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-if (!fs.existsSync('./uploads')) {
-  fs.mkdirSync('./uploads', { recursive: true });
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-let pool;
+// 托管前端页面，访问 http://localhost:3000 即可打开
+app.use(express.static(path.join(__dirname, '..', 'src')));
 
 async function initDB() {
   try {
-    const sslConfig = process.env.MYSQL_SSL === 'true' ? {
-      ca: fs.readFileSync('./isrgrootx1.pem'),
-      minVersion: 'TLSv1.2',
-      rejectUnauthorized: true
-    } : undefined;
-    
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || 'localhost',
-      port: process.env.MYSQL_PORT || 3306,
-      user: process.env.MYSQL_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || '',
-      ssl: sslConfig,
-      waitForConnections: true,
-      connectionLimit: 10,
-      enableKeepAlive: true
-    });
-    log('数据库连接池创建成功');
-
-    const connection = await pool.getConnection();
-    log('数据库连接测试成功');
-    
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS campus_animal`);
-    log('数据库创建成功');
-    
-    await connection.execute(`USE campus_animal`);
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS animals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        species VARCHAR(50) NOT NULL,
-        color VARCHAR(50),
-        features TEXT,
-        imageUrl VARCHAR(255),
-        location_lat DECIMAL(10,7),
-        location_lng DECIMAL(10,7),
-        location_address VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    log('表创建成功');
-    
-    connection.release();
-    
-    pool.end();
-    
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || 'localhost',
-      port: process.env.MYSQL_PORT || 3306,
-      user: process.env.MYSQL_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || '',
-      database: 'campus_animal',
-      ssl: sslConfig,
-      waitForConnections: true,
-      connectionLimit: 10,
-      enableKeepAlive: true
-    });
-    log('连接池重新配置成功');
+    log('正在初始化 SQLite 数据库...');
+    initDatabase();
+    log('SQLite 数据库初始化成功');
   } catch (error) {
     log('数据库初始化错误: ' + error.stack);
     throw error;
@@ -115,15 +62,12 @@ app.get('/api/stats', async (req, res) => {
   try {
     const [totalResult] = await pool.query('SELECT COUNT(*) as count FROM animals');
     const [speciesResult] = await pool.query('SELECT COUNT(DISTINCT species) as count FROM animals');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [todayResult] = await pool.query('SELECT COUNT(*) as count FROM animals WHERE DATE(created_at) = DATE(?)', [today]);
+    const [recResult] = await pool.query("SELECT COUNT(*) as count FROM animals WHERE animal_type IS NOT NULL");
 
     res.json({
       totalAnimals: totalResult[0].count,
       speciesCount: speciesResult[0].count,
-      todayAdd: todayResult[0].count,
-      recognitions: 75
+      recognitions: recResult[0].count
     });
   } catch (error) {
     log('Stats error: ' + error.stack);
@@ -141,6 +85,7 @@ app.get('/api/animals', async (req, res) => {
       color: row.color,
       features: row.features,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -169,6 +114,7 @@ app.get('/api/animals/:id', async (req, res) => {
       color: row.color,
       features: row.features,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -184,12 +130,13 @@ app.get('/api/animals/:id', async (req, res) => {
 
 app.post('/api/animals', async (req, res) => {
   try {
-    const { name, species, color, features, imageUrl, location } = req.body;
+    const { name, species, color, features, imageUrl, animal_type, location } = req.body;
     
     const [result] = await pool.query(
-      `INSERT INTO animals (name, species, color, features, imageUrl, location_lat, location_lng, location_address)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name || '未命名', species, color, features || '', imageUrl, 
+      `INSERT INTO animals (name, species, color, features, imageUrl, animal_type, location_lat, location_lng, location_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name || '未命名', species, color, features || '', imageUrl,
+       animal_type || null,
        location ? location.latitude : null, 
        location ? location.longitude : null, 
        location ? location.address : null]
@@ -198,6 +145,7 @@ app.post('/api/animals', async (req, res) => {
     const row = rows[0];
     res.status(201).json({
       id: row.id,
+      animal_type: row.animal_type,
       name: row.name,
       species: row.species,
       color: row.color,
@@ -216,6 +164,66 @@ app.post('/api/animals', async (req, res) => {
   }
 });
 
+// ======== 管理后台：更新动物 ========
+app.put('/api/animals/:id', async (req, res) => {
+  try {
+    const { name, species, color, features, imageUrl, animal_type, location } = req.body;
+
+    const [result] = await pool.query(
+      `UPDATE animals SET name = ?, species = ?, color = ?, features = ?, imageUrl = ?, animal_type = ?,
+       location_lat = ?, location_lng = ?, location_address = ? WHERE id = ?`,
+      [name || '未命名', species, color || '', features || '', imageUrl || '',
+       animal_type || null,
+       location ? location.latitude : null,
+       location ? location.longitude : null,
+       location ? location.address : null,
+       req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: '动物不存在' });
+    }
+
+    const [rows] = await pool.query('SELECT * FROM animals WHERE id = ?', [req.params.id]);
+    const row = rows[0];
+    res.json({
+      id: row.id,
+      name: row.name,
+      species: row.species,
+      color: row.color,
+      features: row.features,
+      imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
+      location: {
+        latitude: parseFloat(row.location_lat),
+        longitude: parseFloat(row.location_lng),
+        address: row.location_address
+      },
+      createdAt: row.created_at
+    });
+  } catch (error) {
+    log('Update animal error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ======== 管理后台：删除动物 ========
+app.delete('/api/animals/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM animals WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: '动物不存在' });
+    }
+
+    await pool.query('DELETE FROM animals WHERE id = ?', [req.params.id]);
+    log('已删除动物 ID: ' + req.params.id);
+    res.json({ message: '删除成功', id: parseInt(req.params.id) });
+  } catch (error) {
+    log('Delete animal error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.get('/api/stats/latest', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM animals ORDER BY created_at DESC LIMIT 4');
@@ -226,6 +234,7 @@ app.get('/api/stats/latest', async (req, res) => {
       color: row.color,
       features: row.features,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -249,6 +258,7 @@ app.get('/api/map', async (req, res) => {
       species: row.species,
       color: row.color,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -272,6 +282,7 @@ app.get('/api/map/filter', async (req, res) => {
       species: row.species,
       color: row.color,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -300,6 +311,7 @@ app.get('/api/animals/search/query', async (req, res) => {
       color: row.color,
       features: row.features,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -325,6 +337,7 @@ app.get('/api/animals/filter/species', async (req, res) => {
       color: row.color,
       features: row.features,
       imageUrl: row.imageUrl,
+      animal_type: row.animal_type,
       location: {
         latitude: parseFloat(row.location_lat),
         longitude: parseFloat(row.location_lng),
@@ -383,7 +396,12 @@ app.post('/api/recognition/image', upload.single('image'), (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: '校园流浪动物管理系统后端API' });
+  // 浏览器访问时显示前端页面，API 请求时返回 JSON
+  if (req.accepts('html')) {
+    res.sendFile(path.join(__dirname, '..', 'src', '最终演示.html'));
+  } else {
+    res.json({ message: '校园流浪动物管理系统后端API' });
+  }
 });
 
 initDB().then(() => {

@@ -1,8 +1,43 @@
-打开服务器
-cd D:\软件项目管理\campus-animal-fe(1)\campus-animal-fe\backend
-node server.js
+===================================
+开发环境启动方式
+===================================
 
-查看数据库脚本
-cd D:\软件项目管理\campus-animal-fe(1)\campus-animal-fe\backend
+1. 安装依赖（首次运行需要）
+cd backend
+npm install
+
+2. 启动后端服务器（调试模式，数据库自动初始化）
+cd backend
+node server-debug.js
+
+3. 打开前端页面
+在浏览器中访问 http://localhost:3000
+（⚠️ 不要直接双击打开 src/最终演示.html，必须通过 http://localhost:3000 访问）
+
+4. 查看数据库内容
+cd backend
 node view-db.js
+
+===================================
+数据库说明
+===================================
+
+本项目使用 SQLite 作为数据库（替代 TiDB/MySQL）。
+- 无需安装任何数据库服务器
+- 数据文件位于：backend/campus_animal.db
+- 首次启动时自动创建表并插入示例数据
+- 如需重置数据库，删除 campus_animal.db 文件重启即可
+
+如果之前使用的是 MySQL/TiDB，可查看 backend/alter-table.sql 文件参考。
+
+===================================
+AI 图片识别功能说明
+===================================
+
+- 使用方案A（TensorFlow.js + MobileNet 本地模型）
+- 识别在前端浏览器中完成，无需额外后端服务
+- 首次使用时需要加载约 5-10 MB 的模型文件（CDN 加载）
+- 识别结果自动填充到表单中
+- 置信度 < 60% 时显示"不确定，请手动选择"
+- 识别结果（animal_type）随表单一起保存到数据库
 

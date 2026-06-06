@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment
+.env
+backend/.env
+
+# SQLite database
+backend/campus_animal.db
+backend/campus_animal.db-shm
+backend/campus_animal.db-wal
+
+# Uploaded images
+backend/uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

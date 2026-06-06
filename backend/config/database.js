@@ -31,6 +31,7 @@ const initDatabase = async () => {
         color VARCHAR(50) NOT NULL,
         features TEXT,
         imageUrl VARCHAR(500) NOT NULL,
+        animal_type VARCHAR(10) DEFAULT NULL COMMENT 'AI识别结果：猫/狗/不确定',
         location_lat DECIMAL(10, 6) NOT NULL,
         location_lng DECIMAL(10, 6) NOT NULL,
         location_address VARCHAR(255) NOT NULL,
