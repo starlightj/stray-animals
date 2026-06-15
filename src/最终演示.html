@@ -456,6 +456,7 @@
             <button class="nav-btn" onclick="showPage('archive')">📋 动物档案</button>
             <button class="nav-btn" onclick="showPage('map')">🗺️ 地图追踪</button>
             <button class="nav-btn" onclick="showPage('adopt')">🏠 动物领养</button>
+            <button class="nav-btn" onclick="showPage('comments')">💬 评论</button>
             <button class="nav-btn" onclick="showPage('admin')">⚙️ 管理后台</button>
         </div>
 
@@ -1643,10 +1644,15 @@
             try {
                 commentAnimalsData = await fetchAPI('/animals');
                 const select = document.getElementById('commentAnimalSelect');
-                select.innerHTML = '<option value="">请选择动物</option>' +
-                    commentAnimalsData.map(a => `<option value="${a.id}">${a.name || '未命名'} (${a.species})</option>`).join('');
-                document.getElementById('commentList').innerHTML = '<p class="empty">请选择动物查看评论</p>';
-                document.getElementById('commentAnimalName').textContent = '';
+                select.innerHTML = commentAnimalsData.map(a => `<option value="${a.id}">${a.name || '未命名'} (${a.species})</option>`).join('');
+                // 默认选中第一条动物加载评论
+                if (commentAnimalsData.length > 0) {
+                    select.value = commentAnimalsData[0].id;
+                    loadComments();
+                } else {
+                    document.getElementById('commentList').innerHTML = '<p class="empty">暂无动物</p>';
+                    document.getElementById('commentAnimalName').textContent = '';
+                }
             } catch (e) { console.error(e); }
         }
 

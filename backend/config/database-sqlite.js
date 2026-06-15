@@ -86,7 +86,37 @@ function initDatabase() {
     insert.run('小花', '猫', '花斑', '尾巴有白色斑块，性格粘人', 'https://picsum.photos/400/300?random=3', 39.9044, 116.4076, '食堂附近');
     insert.run('旺财', '狗', '棕色', '短毛，耳朵下垂', 'https://picsum.photos/400/300?random=4', 39.9045, 116.4077, '操场');
 
-    console.log('✅ 初始示例数据已插入');
+    console.log('✅ 初始动物数据已插入');
+  }
+
+  // 插入评论示例数据（评论表为空时执行）
+  const commentCount = db.prepare('SELECT COUNT(*) AS count FROM comments').get();
+  if (commentCount.count === 0) {
+    const animals = db.prepare('SELECT id, name FROM animals ORDER BY id ASC LIMIT 4').all();
+    if (animals.length >= 4) {
+      const ci = db.prepare('INSERT INTO comments (animal_id, nickname, content, created_at) VALUES (?, ?, ?, ?)');
+      ci.run(animals[0].id, '爱宠小分队', `${animals[0].name}性格真的很温顺，经常在图书馆门口晒太阳，很多同学都喜欢它`, '2026-06-01 10:30:00');
+      ci.run(animals[0].id, '图书馆管理员', `${animals[0].name}已经在附近生活两年了，很乖不咬人`, '2026-06-02 14:20:00');
+      ci.run(animals[0].id, '学生小明', '我经常带食物喂它，它现在认识我了哈哈', '2026-06-03 09:15:00');
+      ci.run(animals[1].id, '猫猫爱好者', `${animals[1].name}特别机灵，虽然有点怕人但从不伤人`, '2026-06-01 16:00:00');
+      ci.run(animals[1].id, '保安大叔', '晚上经常在教学楼门口等学生下自习，很暖心', '2026-06-04 20:30:00');
+      ci.run(animals[2].id, '食堂阿姨', '经常在食堂附近转悠，我给过它好几次吃的', '2026-06-02 11:45:00');
+      ci.run(animals[2].id, '学生小芳', '超级粘人，一叫就过来蹭你，心都化了', '2026-06-05 18:00:00');
+      ci.run(animals[3].id, '体育老师', '经常在操场上跑步的学生旁边跟着跑，特别有活力', '2026-06-03 07:20:00');
+      console.log('✅ 评论示例数据已插入');
+    }
+  }
+
+  // 插入领养示例数据（领养表为空时执行）
+  const adoptCount = db.prepare('SELECT COUNT(*) AS count FROM adoptions').get();
+  if (adoptCount.count === 0) {
+    const animals = db.prepare('SELECT id, name FROM animals ORDER BY id ASC LIMIT 4').all();
+    if (animals.length >= 3) {
+      const ai = db.prepare('INSERT INTO adoptions (animal_id, adopter_name, contact, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+      ai.run(animals[0].id, '张同学', '138****1234', `很喜欢${animals[0].name}，想给它一个温暖的家`, '待审核', '2026-06-05 15:00:00');
+      ai.run(animals[2].id, '李老师', '139****5678', '家里有院子，可以让它自由活动', '已通过', '2026-06-03 10:30:00');
+      console.log('✅ 领养示例数据已插入');
+    }
   }
 
   console.log('✅ SQLite 数据库初始化成功');
