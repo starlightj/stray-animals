@@ -20,6 +20,10 @@ dist-ssr
 # 上传的图片文件
 backend/uploads/*
 
+# 答辩 PPT（太大，不上传）
+*.pptx
+generate_ppt.py
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
