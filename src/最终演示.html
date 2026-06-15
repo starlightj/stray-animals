@@ -407,6 +407,31 @@
         ::-webkit-scrollbar-thumb { background: #f0c8a0; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #e6b080; }
 
+                .btn-edit {
+            background: linear-gradient(135deg, #8e7cc3, #6c5ce7) !important;
+        }
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #7c6aba, #5a4bd1) !important;
+        }
+        /* ---------- 评论列表 ---------- */
+        .comment-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+        .comment-item {
+            background: #fefcf9; padding: 16px; border-radius: 10px;
+            border: 1px solid #f5ede4;
+        }
+        .comment-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+        }
+        .comment-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 600; flex-shrink: 0;
+        }
+        .comment-nickname { font-size: 14px; font-weight: 500; color: #5a3e1b; flex:1; }
+        .comment-time { font-size: 12px; color: #b0a090; }
+        .comment-content { font-size: 14px; color: #2c3e50; line-height: 1.6; }
+
         /* ---------- 响应式 ---------- */
         @media (max-width: 640px) {
             .header { padding: 24px 20px; }
@@ -430,6 +455,7 @@
             <button class="nav-btn" onclick="showPage('recognize')">📷 识别上报</button>
             <button class="nav-btn" onclick="showPage('archive')">📋 动物档案</button>
             <button class="nav-btn" onclick="showPage('map')">🗺️ 地图追踪</button>
+            <button class="nav-btn" onclick="showPage('adopt')">🏠 动物领养</button>
             <button class="nav-btn" onclick="showPage('admin')">⚙️ 管理后台</button>
         </div>
 
@@ -571,6 +597,82 @@
                         <div id="mapMarkers" style="margin-top: 30px;"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ========== 动物领养页面 ========== -->
+        <div id="adopt" class="page">
+            <div class="card">
+                <h2>🏠 动物领养</h2>
+                <p style="color:#b0a090;margin-bottom:20px;">选择你喜欢的动物，提交领养申请</p>
+
+                <div class="search-area">
+                    <input type="text" id="adoptSearchInput" placeholder="搜索名称..." oninput="filterAdoptAnimals()">
+                    <select id="adoptSpeciesFilter" onchange="filterAdoptAnimals()">
+                        <option value="">全部物种</option>
+                        <option value="猫">猫</option>
+                        <option value="狗">狗</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+
+                <div id="adoptAnimalList" class="animal-grid"></div>
+            </div>
+
+            <!-- 领养申请弹窗 -->
+            <div id="adoptModal" class="detail-modal">
+                <div class="detail-content" style="max-width:500px;">
+                    <span class="close-btn" onclick="closeAdoptModal()">&times;</span>
+                    <h2 style="margin-bottom:20px;">🐾 领养申请</h2>
+                    <p style="color:#8a7a6a;margin-bottom:16px;">申请领养：<strong id="adoptAnimalName" style="color:#5a3e1b;"></strong></p>
+                    <form onsubmit="submitAdoption(event)">
+                        <input type="hidden" id="adoptAnimalId">
+                        <div class="form-group">
+                            <label>你的姓名 *</label>
+                            <input type="text" id="adoptName" placeholder="请输入姓名" required>
+                        </div>
+                        <div class="form-group">
+                            <label>联系方式 *</label>
+                            <input type="text" id="adoptContact" placeholder="手机号 / 微信 / QQ" required>
+                        </div>
+                        <div class="form-group">
+                            <label>领养理由</label>
+                            <textarea id="adoptReason" placeholder="为什么想领养它？"></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn">提交申请</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeAdoptModal()">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== 评论页面 ========== -->
+        <div id="comments" class="page">
+            <div class="card">
+                <h2>💬 评论</h2>
+                <p style="color:#b0a090;margin-bottom:20px;">关于「<span id="commentAnimalName"></span>」的讨论</p>
+
+                <!-- 选择动物 -->
+                <div class="search-area">
+                    <select id="commentAnimalSelect" onchange="loadComments()" style="flex:1;">
+                        <option value="">请选择动物</option>
+                    </select>
+                </div>
+
+                <!-- 发表评论 -->
+                <div style="background:#fefcf9;padding:16px;border-radius:10px;border:1px solid #f0d5b0;margin-bottom:20px;">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <input type="text" id="commentNickname" placeholder="你的昵称（选填）" style="width:100%;padding:10px;border:2px solid #f0d5b0;border-radius:8px;">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <input type="text" id="commentContent" placeholder="说点什么..." style="flex:1;padding:10px;border:2px solid #f0d5b0;border-radius:8px;">
+                        <button class="btn" onclick="submitComment()">发送</button>
+                    </div>
+                </div>
+
+                <div id="commentList" class="comment-list"></div>
             </div>
         </div>
 
@@ -753,6 +855,10 @@
                 renderAnimalGrid();
             } else if (pageId === 'map') {
                 renderMap();
+            } else if (pageId === 'adopt') {
+                renderAdoptList();
+            } else if (pageId === 'comments') {
+                showCommentsPage();
             } else if (pageId === 'admin') {
                 renderAdminTable();
             }
@@ -1184,8 +1290,12 @@
                     <p style="margin-bottom: 12px;"><strong style="color:#7a5a2e;">特征描述</strong><br>${currentAnimal.features || '暂无描述'}</p>
                     <p style="font-size: 12px; color: #b0a090; margin-bottom: 20px;">📅 登记时间：${new Date(currentAnimal.createdAt).toLocaleString()}</p>
                     <div class="btn-group" style="margin-top: 20px;">
-                        <button class="btn" onclick="closeModal();editAnimal('${currentAnimal.id}')">✏️ 编辑</button>
-                        <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+                        <button class="btn" style="background:linear-gradient(135deg,#27ae60,#2ecc71);flex:1;" onclick="closeModal();openAdoptModal('${currentAnimal.id}','${(currentAnimal.name||'未命名').replace(/'/g,"\\'")}')">🏠 领养</button>
+                        <button class="btn btn-secondary" style="flex:1;" onclick="closeModal();showCommentForAnimal('${currentAnimal.id}','${(currentAnimal.name||'未命名').replace(/'/g,"\\'")}')">💬 评论</button>
+                    </div>
+                    <div class="btn-group" style="margin-top: 10px;">
+                        <button class="btn btn-edit" style="flex:1;" onclick="closeModal();editAnimal('${currentAnimal.id}')">✏️ 编辑</button>
+                        <button class="btn btn-secondary" style="flex:1;" onclick="closeModal()">关闭</button>
                     </div>
                 `;
                 document.getElementById('detailContent').innerHTML = html;
@@ -1459,6 +1569,154 @@
                 console.error('删除失败:', error);
                 alert('删除失败: ' + error.message);
             }
+        }
+
+        // ======== 领养功能 ========
+        let adoptAnimalsData = [];
+
+        function showAdoptPage() {
+            renderAdoptList();
+        }
+
+        async function renderAdoptList() {
+            try {
+                adoptAnimalsData = await fetchAPI('/animals');
+                filterAdoptAnimals();
+            } catch (e) { console.error(e); }
+        }
+
+        function filterAdoptAnimals() {
+            const keyword = (document.getElementById('adoptSearchInput').value || '').toLowerCase();
+            const species = document.getElementById('adoptSpeciesFilter').value;
+            let list = [...adoptAnimalsData];
+            if (species) list = list.filter(a => a.species === species);
+            if (keyword) list = list.filter(a => (a.name||'').toLowerCase().includes(keyword));
+
+            let html = '';
+            list.forEach(animal => {
+                html += `
+                    <div class="animal-card">
+                        <img src="${animal.imageUrl}" alt="${animal.name || '动物'}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%23eee%22 width=%22300%22 height=%22200%22/><text x=%22150%22 y=%22110%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2230%22>📷</text></svg>'">
+                        <h3>${animal.name || '未命名'}</h3>
+                        <p><span class="tag">${animal.species}</span> ${animal.color}</p>
+                        <p style="font-size:13px;color:#8a7a6a;">${animal.features || '暂无描述'}</p>
+                        <p style="font-size:12px;color:#b0a090;margin-top:8px;">📍 ${animal.location.address}</p>
+                        <button class="btn" style="margin-top:12px;width:100%;background:linear-gradient(135deg,#27ae60,#2ecc71);" onclick="openAdoptModal('${animal.id}','${(animal.name||'未命名').replace(/'/g,"\\'")}')">🏠 申请领养</button>
+                    </div>
+                `;
+            });
+            document.getElementById('adoptAnimalList').innerHTML = html || '<p class="empty" style="grid-column:1/-1;">暂无动物</p>';
+        }
+
+        function openAdoptModal(id, name) {
+            document.getElementById('adoptAnimalId').value = id;
+            document.getElementById('adoptAnimalName').textContent = name;
+            document.getElementById('adoptName').value = '';
+            document.getElementById('adoptContact').value = '';
+            document.getElementById('adoptReason').value = '';
+            document.getElementById('adoptModal').classList.add('active');
+        }
+
+        function closeAdoptModal() {
+            document.getElementById('adoptModal').classList.remove('active');
+        }
+
+        async function submitAdoption(event) {
+            event.preventDefault();
+            const data = {
+                animal_id: parseInt(document.getElementById('adoptAnimalId').value),
+                adopter_name: document.getElementById('adoptName').value,
+                contact: document.getElementById('adoptContact').value,
+                reason: document.getElementById('adoptReason').value
+            };
+            try {
+                await fetchAPI('/adoptions', { method: 'POST', body: JSON.stringify(data) });
+                alert('✅ 领养申请已提交！');
+                closeAdoptModal();
+            } catch (e) { alert('提交失败'); }
+        }
+
+        // ======== 评论功能 ========
+        let commentAnimalsData = [];
+
+        async function showCommentsPage() {
+            try {
+                commentAnimalsData = await fetchAPI('/animals');
+                const select = document.getElementById('commentAnimalSelect');
+                select.innerHTML = '<option value="">请选择动物</option>' +
+                    commentAnimalsData.map(a => `<option value="${a.id}">${a.name || '未命名'} (${a.species})</option>`).join('');
+                document.getElementById('commentList').innerHTML = '<p class="empty">请选择动物查看评论</p>';
+                document.getElementById('commentAnimalName').textContent = '';
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadComments() {
+            const animalId = document.getElementById('commentAnimalSelect').value;
+            const listEl = document.getElementById('commentList');
+            const nameEl = document.getElementById('commentAnimalName');
+
+            if (!animalId) {
+                listEl.innerHTML = '<p class="empty">请选择动物查看评论</p>';
+                nameEl.textContent = '';
+                return;
+            }
+
+            const animal = commentAnimalsData.find(a => a.id == animalId);
+            nameEl.textContent = animal ? (animal.name || '未命名') : '';
+
+            try {
+                const comments = await fetchAPI(`/comments/animal/${animalId}`);
+                if (comments.length === 0) {
+                    listEl.innerHTML = '<p class="empty">暂无评论，来发表第一条吧 🐾</p>';
+                    return;
+                }
+                let html = '';
+                comments.forEach(c => {
+                    html += `
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <div class="comment-avatar">${c.nickname.charAt(0)}</div>
+                                <span class="comment-nickname">${c.nickname}</span>
+                                <span class="comment-time">${c.created_at}</span>
+                            </div>
+                            <div class="comment-content">${c.content}</div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        function showCommentForAnimal(id, name) {
+            // 先切换到评论页面
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('comments').classList.add('active');
+
+            // 加载动物列表并选中
+            showCommentsPage().then(() => {
+                document.getElementById('commentAnimalSelect').value = id;
+                document.getElementById('commentAnimalName').textContent = name;
+                loadComments();
+            });
+        }
+
+        async function submitComment() {
+            const animalId = document.getElementById('commentAnimalSelect').value;
+            if (!animalId) { alert('请先选择动物'); return; }
+            const content = document.getElementById('commentContent').value.trim();
+            if (!content) { alert('请输入评论内容'); return; }
+            const nickname = document.getElementById('commentNickname').value.trim() || '匿名用户';
+
+            try {
+                const comment = await fetchAPI('/comments', {
+                    method: 'POST',
+                    body: JSON.stringify({ animal_id: parseInt(animalId), nickname, content })
+                });
+                document.getElementById('commentContent').value = '';
+                // 刷新
+                loadComments();
+            } catch (e) { alert('评论失败'); }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
