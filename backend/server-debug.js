@@ -395,6 +395,98 @@ app.post('/api/recognition/image', upload.single('image'), (req, res) => {
   });
 });
 
+// ======== 领养相关 API ========
+
+// 获取所有领养申请
+app.get('/api/adoptions', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM adoptions ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (error) {
+    log('Adoptions error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 获取某动物的领养申请
+app.get('/api/adoptions/animal/:animalId', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM adoptions WHERE animal_id = ? ORDER BY created_at DESC', [req.params.animalId]);
+    res.json(rows);
+  } catch (error) {
+    log('Adoptions by animal error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 提交领养申请
+app.post('/api/adoptions', async (req, res) => {
+  try {
+    const { animal_id, adopter_name, contact, reason } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO adoptions (animal_id, adopter_name, contact, reason, status) VALUES (?, ?, ?, ?, ?)',
+      [animal_id, adopter_name || '匿名', contact || '', reason || '', '待审核']
+    );
+    res.status(201).json({ id: result.insertId, message: '领养申请提交成功' });
+  } catch (error) {
+    log('Create adoption error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 更新领养状态
+app.put('/api/adoptions/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    await pool.query('UPDATE adoptions SET status = ? WHERE id = ?', [status, req.params.id]);
+    res.json({ message: '状态更新成功' });
+  } catch (error) {
+    log('Update adoption error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ======== 评论相关 API ========
+
+// 获取某动物的评论
+app.get('/api/comments/animal/:animalId', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM comments WHERE animal_id = ? ORDER BY created_at DESC', [req.params.animalId]);
+    res.json(rows);
+  } catch (error) {
+    log('Comments error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 发表评论
+app.post('/api/comments', async (req, res) => {
+  try {
+    const { animal_id, nickname, content } = req.body;
+    if (!content) return res.status(400).json({ message: '评论内容不能为空' });
+    const [result] = await pool.query(
+      'INSERT INTO comments (animal_id, nickname, content) VALUES (?, ?, ?)',
+      [animal_id, nickname || '匿名用户', content]
+    );
+    const [rows] = await pool.query('SELECT * FROM comments WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    log('Create comment error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 删除评论
+app.delete('/api/comments/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    res.json({ message: '删除成功' });
+  } catch (error) {
+    log('Delete comment error: ' + error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.get('/', (req, res) => {
   // 浏览器访问时显示前端页面，API 请求时返回 JSON
   if (req.accepts('html')) {

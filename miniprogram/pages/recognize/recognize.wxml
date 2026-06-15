@@ -1,0 +1,87 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">📷 动物图像识别</view>
+
+    <!-- 上传区 -->
+    <view class="upload-area" bindtap="chooseImage" wx:if="{{!imageUrl}}">
+      <text class="upload-icon">🐾</text>
+      <text class="upload-text">点击上传图片</text>
+      <text class="upload-hint">支持 JPG、PNG 格式 · 自动识别猫或狗</text>
+    </view>
+
+    <!-- 图片预览 -->
+    <view class="preview-area" wx:else>
+      <image src="{{imageUrl}}" class="preview-img" mode="aspectFill" />
+      <view class="preview-actions">
+        <button class="btn" size="mini" bindtap="chooseImage">重新选择</button>
+      </view>
+    </view>
+
+    <!-- 识别中 -->
+    <view wx:if="{{recognizing}}" class="recognizing">
+      <text class="rec-icon">🔍</text>
+      <text class="rec-text">AI 识别中...</text>
+    </view>
+
+    <!-- 识别结果 -->
+    <view wx:if="{{result.show}}" class="result-section">
+      <!-- AI 徽章 -->
+      <view class="ai-badge {{result.aiClass}}">
+        <text class="ai-icon">{{result.aiIcon}}</text>
+        <text class="ai-label">{{result.aiLabel}}</text>
+        <text class="ai-conf">置信度：{{result.confidence}}%</text>
+        <view class="conf-bar">
+          <view class="conf-fill {{result.barClass}}" style="width:{{result.confidence}}%"></view>
+        </view>
+      </view>
+
+      <!-- 结果卡片 -->
+      <view class="result-card">
+        <view class="result-row">
+          <text class="result-key">AI识别</text>
+          <text class="result-val">{{result.aiTypeText}}</text>
+        </view>
+        <view class="result-row">
+          <text class="result-key">物种</text>
+          <text class="result-val">{{resultInfo.species}}</text>
+        </view>
+        <view class="result-row">
+          <text class="result-key">颜色</text>
+          <text class="result-val">{{resultInfo.color}}</text>
+        </view>
+        <view class="result-row">
+          <text class="result-key">置信度</text>
+          <text class="result-val">{{result.confidence}}%</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 保存表单 -->
+    <view wx:if="{{showForm}}" class="form-section">
+      <view class="form-group">
+        <text class="form-label">动物名称</text>
+        <input class="form-input" placeholder="选填" model:value="{{form.name}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">物种</text>
+        <picker class="form-input" range="{{speciesList}}" model:value="{{form.species}}" bindchange="onSpeciesChange">
+          <view>{{form.species || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <text class="form-label">毛色</text>
+        <input class="form-input" placeholder="请输入毛色" model:value="{{form.color}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">特征描述</text>
+        <input class="form-input" placeholder="选填" model:value="{{form.features}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">发现地点</text>
+        <input class="form-input" placeholder="例如：图书馆前" model:value="{{form.location}}" />
+      </view>
+
+      <button class="btn" style="width:100%;margin-top:10rpx;" bindtap="saveAnimal">💾 保存登记</button>
+    </view>
+  </view>
+</view>

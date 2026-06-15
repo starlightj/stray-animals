@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">🏠 动物领养</view>
+    <text class="page-desc">选择你喜欢的动物，提交领养申请</text>
+
+    <view class="search-bar">
+      <input class="search-input" placeholder="搜索名称..." model:value="{{keyword}}" bindinput="onSearch" />
+      <picker class="search-picker" range="{{speciesFilter}}" bindchange="onFilter">
+        <view>{{currentFilter || '全部物种'}}</view>
+      </picker>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{animals.length === 0}}" class="empty">暂无动物</view>
+
+    <view wx:else class="adopt-list">
+      <view class="adopt-card" wx:for="{{animals}}" wx:key="id">
+        <image src="{{item.imageUrl}}" class="adopt-img" mode="aspectFill" />
+        <view class="adopt-info">
+          <text class="adopt-name">{{item.name || '未命名'}}</text>
+          <view class="adopt-tags">
+            <text class="tag">{{item.species}}</text>
+            <text class="tag tag-color">{{item.color}}</text>
+          </view>
+          <text class="adopt-features">{{item.features || '暂无描述'}}</text>
+          <text class="adopt-addr">📍 {{item.location.address}}</text>
+        </view>
+        <button class="btn-adopt" data-id="{{item.id}}" data-name="{{item.name || '未命名'}}" bindtap="showApply">申请领养</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 申请弹窗 -->
+  <view class="modal {{showModal ? 'active' : ''}}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">🐾 领养申请</text>
+        <text class="modal-close" bindtap="closeModal">✕</text>
+      </view>
+      <text style="font-size:24rpx;color:#8a7a6a;display:block;margin-bottom:20rpx;">申请领养：<text style="font-weight:600;color:#5a3e1b;">{{applyAnimalName}}</text></text>
+      <view class="form-group">
+        <text class="form-label">你的姓名 *</text>
+        <input class="form-input" placeholder="请输入姓名" model:value="{{applyForm.name}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系方式 *</text>
+        <input class="form-input" placeholder="手机号 / 微信 / QQ" model:value="{{applyForm.contact}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">领养理由</text>
+        <input class="form-input" placeholder="为什么想领养它？" model:value="{{applyForm.reason}}" />
+      </view>
+      <view class="modal-footer">
+        <button class="btn-secondary" style="flex:1" bindtap="closeModal">取消</button>
+        <button class="btn" style="flex:1" bindtap="submitApply">提交申请</button>
+      </view>
+    </view>
+  </view>
+</view>

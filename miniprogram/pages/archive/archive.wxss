@@ -1,0 +1,48 @@
+.page { padding: 20rpx; }
+
+.animal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+}
+.animal-card {
+  background: #fff;
+  padding: 16rpx;
+  border-radius: 14rpx;
+  box-shadow: 0 3rpx 12rpx rgba(180,120,60,0.10);
+  border: 1rpx solid rgba(230,126,34,0.06);
+}
+.animal-img {
+  width: 100%;
+  height: 200rpx;
+  border-radius: 10rpx;
+  object-fit: cover;
+  margin-bottom: 10rpx;
+}
+.animal-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #5a3e1b;
+  display: block;
+}
+.animal-info {
+  margin-top: 6rpx;
+  display: flex;
+  align-items: center;
+}
+.animal-color { font-size: 22rpx; color: #8a7a6a; }
+.animal-features {
+  font-size: 22rpx;
+  color: #8a7a6a;
+  display: block;
+  margin-top: 6rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animal-address {
+  font-size: 20rpx;
+  color: #b0a090;
+  display: block;
+  margin-top: 8rpx;
+}

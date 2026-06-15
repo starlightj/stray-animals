@@ -1,0 +1,55 @@
+<view class="page">
+  <!-- 统计卡片 -->
+  <view class="stats-grid">
+    <view class="stat-card">
+      <text class="stat-num">{{stats.totalAnimals}}</text>
+      <text class="stat-label">总动物数量</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-num">{{stats.speciesCount}}</text>
+      <text class="stat-label">物种数量</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-num">{{stats.recognitions}}</text>
+      <text class="stat-label">识别次数</text>
+    </view>
+  </view>
+
+  <!-- 最新登记 -->
+  <view class="card">
+    <view class="card-title">🐕 最新登记</view>
+    <view wx:if="{{latest.length === 0}}" class="empty">暂无数据</view>
+    <scroll-view scroll-x class="animal-scroll" wx:else>
+      <view class="animal-scroll-inner">
+        <view class="animal-card-sm" wx:for="{{latest}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+          <image src="{{item.imageUrl}}" class="animal-img-sm" mode="aspectFill" />
+          <text class="animal-name-sm">{{item.name || '未命名'}}</text>
+          <view class="animal-tags">
+            <text class="tag">{{item.species}}</text>
+            <text class="tag tag-color">{{item.color}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 快速入口 -->
+  <view class="quick-actions">
+    <view class="action-btn" bindtap="goRecognize">
+      <text class="action-icon">📷</text>
+      <text class="action-text">识别上报</text>
+    </view>
+    <view class="action-btn" bindtap="goArchive">
+      <text class="action-icon">📋</text>
+      <text class="action-text">动物档案</text>
+    </view>
+    <view class="action-btn" bindtap="goAdmin">
+      <text class="action-icon">⚙️</text>
+      <text class="action-text">管理后台</text>
+    </view>
+    <view class="action-btn" bindtap="goAdopt">
+      <text class="action-icon">🏠</text>
+      <text class="action-text">动物领养</text>
+    </view>
+  </view>
+</view>

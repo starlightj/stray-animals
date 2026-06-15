@@ -1,0 +1,47 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+  <view wx:else class="card">
+    <view class="card-title">✏️ 编辑动物信息</view>
+
+    <image src="{{form.imageUrl}}" class="edit-preview" mode="aspectFill" wx:if="{{form.imageUrl}}" />
+
+    <view class="form-group">
+      <text class="form-label">名称</text>
+      <input class="form-input" model:value="{{form.name}}" placeholder="选填" />
+    </view>
+    <view class="form-group">
+      <text class="form-label">物种</text>
+      <picker class="form-input" range="{{['猫','狗','其他']}}" bindchange="onSpecies">
+        <view>{{form.species || '请选择'}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">毛色</text>
+      <input class="form-input" model:value="{{form.color}}" />
+    </view>
+    <view class="form-group">
+      <text class="form-label">特征</text>
+      <input class="form-input" model:value="{{form.features}}" placeholder="选填" />
+    </view>
+    <view class="form-group">
+      <text class="form-label">图片 URL</text>
+      <input class="form-input" model:value="{{form.imageUrl}}" placeholder="图片URL" />
+      <button class="btn-upload" style="margin-top:12rpx;" bindtap="uploadImage">📁 选择图片上传</button>
+    </view>
+    <view class="form-group">
+      <text class="form-label">地点</text>
+      <input class="form-input" model:value="{{form.location}}" />
+    </view>
+    <view class="form-group">
+      <text class="form-label">AI 识别</text>
+      <picker class="form-input" range="{{['无','🐱 猫','🐶 狗']}}" bindchange="onAiType">
+        <view>{{form.aiTypeText || '无'}}</view>
+      </picker>
+    </view>
+
+    <view class="btn-group">
+      <button class="btn" style="flex:1" bindtap="save">💾 保存修改</button>
+      <button class="btn-secondary" style="flex:1" bindtap="goBack">取消</button>
+    </view>
+  </view>
+</view>

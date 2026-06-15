@@ -1,0 +1,75 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">⚙️ 管理后台</view>
+    <button class="btn" style="width:100%;margin-bottom:20rpx;" bindtap="showAdd">➕ 添加新动物</button>
+
+    <!-- 搜索 -->
+    <view class="search-bar">
+      <input class="search-input" placeholder="搜索..." model:value="{{keyword}}" bindinput="onSearch" />
+      <picker class="search-picker" range="{{speciesFilter}}" bindchange="onFilter">
+        <view>{{currentFilter || '全部'}}</view>
+      </picker>
+    </view>
+
+    <!-- 列表 -->
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无数据</view>
+
+    <view class="admin-list" wx:else>
+      <view class="admin-item" wx:for="{{list}}" wx:key="id">
+        <image src="{{item.imageUrl}}" class="admin-img" mode="aspectFill" />
+        <view class="admin-info">
+          <text class="admin-name">{{item.name || '未命名'}}</text>
+          <text class="admin-desc">{{item.species}} · {{item.color}}</text>
+          <text class="admin-desc" wx:if="{{item.animal_type}}">AI: {{item.animal_type === '猫' ? '🐱' : '🐶'}} {{item.animal_type}}</text>
+        </view>
+        <view class="admin-actions">
+          <button class="btn-sm btn-edit" bindtap="editItem" data-id="{{item.id}}">✏️</button>
+          <button class="btn-sm btn-del" bindtap="deleteItem" data-id="{{item.id}}" data-name="{{item.name}}">🗑️</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 添加弹窗 -->
+<view class="modal {{showAddModal ? 'active' : ''}}">
+  <view class="modal-content">
+    <view class="modal-header">
+      <text class="modal-title">➕ 添加动物</text>
+      <text class="modal-close" bindtap="hideAdd">✕</text>
+    </view>
+    <view class="modal-body">
+      <view class="form-group">
+        <text class="form-label">名称</text>
+        <input class="form-input" placeholder="选填" model:value="{{addForm.name}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">物种</text>
+        <picker class="form-input" range="{{['猫','狗','其他']}}" bindchange="onAddSpecies">
+          <view>{{addForm.species || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <text class="form-label">毛色</text>
+        <input class="form-input" placeholder="必填" model:value="{{addForm.color}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">特征</text>
+        <input class="form-input" placeholder="选填" model:value="{{addForm.features}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">图片URL</text>
+        <input class="form-input" placeholder="必填" model:value="{{addForm.imageUrl}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">地点</text>
+        <input class="form-input" placeholder="例如：图书馆前" model:value="{{addForm.location}}" />
+      </view>
+    </view>
+    <view class="modal-footer">
+      <button class="btn-secondary" style="flex:1" bindtap="hideAdd">取消</button>
+      <button class="btn" style="flex:1" bindtap="submitAdd">保存</button>
+    </view>
+  </view>
+</view>

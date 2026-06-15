@@ -45,6 +45,34 @@ function initDatabase() {
     )
   `);
 
+  // ====== 领养申请表 ======
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS adoptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      animal_id INTEGER NOT NULL,
+      adopter_name TEXT NOT NULL DEFAULT '',
+      contact TEXT NOT NULL DEFAULT '',
+      reason TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT '待审核',
+      created_at TEXT DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY (animal_id) REFERENCES animals(id)
+    )
+  `);
+
+  // ====== 评论表 ======
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      animal_id INTEGER NOT NULL,
+      nickname TEXT NOT NULL DEFAULT '匿名用户',
+      content TEXT NOT NULL DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY (animal_id) REFERENCES animals(id)
+    )
+  `);
+
+  console.log('✅ 领养/评论表创建成功');
+
   // 插入初始示例数据
   const row = db.prepare('SELECT COUNT(*) AS count FROM animals').get();
   if (row.count === 0) {

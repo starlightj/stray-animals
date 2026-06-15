@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="card">
+    <view class="card-title">💬 评论</view>
+    <text style="font-size:24rpx;color:#b0a090;display:block;margin-bottom:20rpx;">
+      关于「{{animalName}}」的讨论
+    </text>
+
+    <!-- 发表评论 -->
+    <view class="post-box">
+      <input class="form-input" placeholder="你的昵称（选填）" model:value="{{form.nickname}}" style="margin-bottom:12rpx;" />
+      <view style="display:flex;gap:12rpx;">
+        <input class="form-input" placeholder="说点什么..." model:value="{{form.content}}" style="flex:1;" />
+        <button class="btn" style="flex-shrink:0;padding:16rpx 28rpx;" bindtap="submitComment">发送</button>
+      </view>
+    </view>
+
+    <!-- 评论列表 -->
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{list.length === 0}}" class="empty">暂无评论，来发表第一条吧 🐾</view>
+
+    <view wx:else class="comment-list">
+      <view class="comment-item" wx:for="{{list}}" wx:key="id">
+        <view class="comment-header">
+          <text class="comment-avatar">{{item.nickname.slice(0,1)}}</text>
+          <text class="comment-nickname">{{item.nickname}}</text>
+          <text class="comment-time">{{item.created_at}}</text>
+        </view>
+        <text class="comment-content">{{item.content}}</text>
+      </view>
+    </view>
+  </view>
+</view>
