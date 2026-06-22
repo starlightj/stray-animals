@@ -1,23 +1,44 @@
-# React + TypeScript + Vite
+# 🐾 校园流浪动物管理系统
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于图像识别的校园流浪动物管理系统，支持 AI 识别猫狗、档案管理、地图追踪、领养申请和评论互动。
 
-Currently, two official plugins are available:
+## 🚀 快速启动
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 方法一：双击运行（推荐给伙伴）
 
-## React Compiler
+```
+1. 下载解压项目
+2. 双击「启动服务器.bat」
+3. 浏览器打开 http://localhost:3000
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 方法二：命令行
 
-## Expanding the ESLint configuration
+```bash
+cd backend
+npm install
+node server-debug.js
+```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+然后浏览器打开 http://localhost:3000
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
+## 📋 功能模块一览
+
+| 模块 | 说明 |
+|------|------|
+| 📊 数据看板 | 统计总动物数、物种数、识别次数 |
+| 📷 AI识别上报 | 上传图片自动识别猫/狗（TensorFlow.js） |
+| 📋 动物档案 | 卡片展示 + 搜索/筛选/详情 |
+| 🗺️ 地图追踪 | 位置分布展示，按物种筛选 |
+| 🏠 动物领养 | 提交领养申请（姓名/联系方式/理由） |
+| 💬 评论系统 | 发表和查看评论 |
+| ⚙️ 管理后台 | 增删改查 + 图片上传 |
+
+## 🛠️ 技术栈
+
+- **前端**: HTML5 + CSS3 + JavaScript + TensorFlow.js + MobileNet
+- **后端**: Node.js + Express + Multer
+- **数据库**: SQLite (better-sqlite3，零配置)
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
