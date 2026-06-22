@@ -24,6 +24,19 @@ backend/uploads/*
 *.pptx
 generate_ppt.py
 
+# 微信小程序（单独仓库）
+miniprogram/
+
+# Python 虚拟环境
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 环境变量文件（除已跟踪的）
+.env
+.env.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
